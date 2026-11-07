@@ -1,0 +1,61 @@
+
+@startuml
+title SC-02 — Книга вже видана
+
+autonumber
+
+actor "Бібліотекар" as Librarian
+boundary "LibraryUI" as UI
+control "LoanService" as Service
+entity "ReaderRepository" as Readers
+entity "BookRepository" as Books
+entity "LoanRepository" as Loans
+
+Librarian -> UI: submitLoan(15, 101, "04.11.2026")
+activate UI
+
+UI -> Service: issueBook(15, 101, "04.11.2026")
+activate Service
+
+Service -> Readers: findReaderById(15)
+activate Readers
+Readers --> Service: Reader(id=15)
+deactivate Readers
+
+alt Читач зареєстрований
+    Service -> Books: findBookById(101)
+    activate Books
+    Books --> Service: Book(id=101)
+    deactivate Books
+
+    Service -> Loans: findActiveLoan(101)
+    activate Loans
+    Loans --> Service: Loan(id=400, return_date=null)
+    deactivate Loans
+
+    alt Активна видача існує
+        Service --> UI: LoanError("Книга вже видана")
+    else Активної видачі немає
+        note over Service, Loans
+          За цієї умови система продовжила б
+          перевірку due_date і створення Loan.
+          У SC-02 ця гілка не виконується.
+        end note
+    end
+else Читача не знайдено
+    Service --> UI: LoanError("Читача не знайдено")
+end
+
+deactivate Service
+
+UI -> UI: showError("Книга вже видана")
+UI --> Librarian: Видачу відхилено
+
+deactivate UI
+
+note over Service, Loans
+  Новий Loan не створюється.
+  Наявний Loan(id=400) не змінюється.
+end note
+
+@enduml
