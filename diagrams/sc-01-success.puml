@@ -1,0 +1,71 @@
+
+@startuml
+title SC-01 — Успішна видача книги
+
+autonumber
+
+actor "Бібліотекар" as Librarian
+boundary "LibraryUI" as UI
+control "LoanService" as Service
+control "Clock" as Clock
+entity "ReaderRepository" as Readers
+entity "BookRepository" as Books
+entity "LoanRepository" as Loans
+
+Librarian -> UI: submitLoan(15, 101, "04.11.2026")
+activate UI
+
+UI -> Service: issueBook(15, 101, "04.11.2026")
+activate Service
+
+Service -> Readers: findReaderById(15)
+activate Readers
+Readers --> Service: Reader(id=15)
+deactivate Readers
+
+alt Читач зареєстрований
+    Service -> Books: findBookById(101)
+    activate Books
+    Books --> Service: Book(id=101)
+    deactivate Books
+
+    Service -> Loans: findActiveLoan(101)
+    activate Loans
+    Loans --> Service: null
+    deactivate Loans
+
+    alt Книга доступна
+        Service -> Clock: today()
+        activate Clock
+        Clock --> Service: 21.10.2026
+        deactivate Clock
+
+        Service -> Service: validateDueDate("04.11.2026", "21.10.2026")
+
+        alt Дата повернення правильна
+            Service -> Loans: createLoan(15, 101, "21.10.2026", "04.11.2026")
+            activate Loans
+            Loans --> Service: Loan(id=501, return_date=null)
+            deactivate Loans
+
+            Service --> UI: LoanCreated(id=501)
+        else Дата неправильна
+            Service --> UI: ValidationError("Неправильна дата")
+        end
+
+    else Книга вже видана
+        Service --> UI: LoanError("Книга вже видана")
+    end
+
+else Читача не знайдено
+    Service --> UI: LoanError("Читача не знайдено")
+end
+
+deactivate Service
+
+UI -> UI: showSuccessOrError()
+UI --> Librarian: Результат оформлення видачі
+
+deactivate UI
+
+@enduml
