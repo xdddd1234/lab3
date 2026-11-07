@@ -1,0 +1,75 @@
+
+@startuml
+title SC-03 — Неправильна дата повернення
+
+autonumber
+
+actor "Бібліотекар" as Librarian
+boundary "LibraryUI" as UI
+control "LoanService" as Service
+control "Clock" as Clock
+entity "ReaderRepository" as Readers
+entity "BookRepository" as Books
+entity "LoanRepository" as Loans
+
+Librarian -> UI: submitLoan(15, 101, "20.10.2026")
+activate UI
+
+UI -> Service: issueBook(15, 101, "20.10.2026")
+activate Service
+
+Service -> Readers: findReaderById(15)
+activate Readers
+Readers --> Service: Reader(id=15)
+deactivate Readers
+
+alt Читач зареєстрований
+    Service -> Books: findBookById(101)
+    activate Books
+    Books --> Service: Book(id=101)
+    deactivate Books
+
+    Service -> Loans: findActiveLoan(101)
+    activate Loans
+    Loans --> Service: null
+    deactivate Loans
+
+    alt Книга доступна
+        Service -> Clock: today()
+        activate Clock
+        Clock --> Service: 21.10.2026
+        deactivate Clock
+
+        Service -> Service: validateDueDate("20.10.2026", "21.10.2026")
+
+        alt dueDate < loanDate
+            Service --> UI: ValidationError("Неправильна дата повернення")
+        else Дата правильна
+            note over Service, Loans
+              За правильної дати система могла б
+              створити Loan. У SC-03 ця гілка
+              не виконується.
+            end note
+        end
+
+    else Книга вже видана
+        Service --> UI: LoanError("Книга вже видана")
+    end
+
+else Читача не знайдено
+    Service --> UI: LoanError("Читача не знайдено")
+end
+
+deactivate Service
+
+UI -> UI: showError("Неправильна дата повернення")
+UI --> Librarian: Видачу відхилено
+
+deactivate UI
+
+note over Service, Loans
+  Новий Loan не створюється.
+  Дані Reader, Book і Loan не змінюються.
+end note
+
+@enduml
