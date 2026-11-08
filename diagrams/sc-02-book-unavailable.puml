@@ -11,6 +11,12 @@ entity "ReaderRepository" as Readers
 entity "BookRepository" as Books
 entity "LoanRepository" as Loans
 
+note over Librarian, UI
+  Передумова SC-02:
+  бібліотекар авторизований
+  і має право видавати книги.
+end note
+
 Librarian -> UI: submitLoan(15, 101, "04.11.2026")
 activate UI
 
@@ -35,27 +41,28 @@ alt Читач зареєстрований
 
     alt Активна видача існує
         Service --> UI: LoanError("Книга вже видана")
+        UI -> UI: showError("Книга вже видана")
+        UI --> Librarian: Видачу відхилено
+
     else Активної видачі немає
-        note over Service, Loans
-          За цієї умови система продовжила б
-          перевірку due_date і створення Loan.
-          У SC-02 ця гілка не виконується.
-        end note
+        Service --> UI: LoanAvailable()
+        UI -> UI: showStatus("Книга доступна")
+        UI --> Librarian: Можна продовжити оформлення
     end
+
 else Читача не знайдено
     Service --> UI: LoanError("Читача не знайдено")
+    UI -> UI: showError("Читача не знайдено")
+    UI --> Librarian: Видачу відхилено
 end
 
 deactivate Service
-
-UI -> UI: showError("Книга вже видана")
-UI --> Librarian: Видачу відхилено
-
 deactivate UI
 
 note over Service, Loans
-  Новий Loan не створюється.
-  Наявний Loan(id=400) не змінюється.
+  У сценарії SC-02:
+  новий Loan не створюється,
+  існуючий Loan(id=400) не змінюється.
 end note
 
 @enduml
