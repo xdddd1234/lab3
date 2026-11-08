@@ -11,6 +11,12 @@ entity "ReaderRepository" as Readers
 entity "BookRepository" as Books
 entity "LoanRepository" as Loans
 
+note over Librarian, UI
+  Передумова SC-04:
+  бібліотекар авторизований
+  і має право видавати книги.
+end note
+
 Librarian -> UI: submitLoan(9999, 101, "04.11.2026")
 activate UI
 
@@ -24,25 +30,37 @@ deactivate Readers
 
 alt Читача не знайдено
     Service --> UI: LoanError("Читача не знайдено")
+    UI -> UI: showError("Читача не знайдено")
+    UI --> Librarian: Видачу відхилено
+
 else Читач зареєстрований
-    note over Service, Loans
-      Система продовжила б перевірку
-      книги та дати повернення.
-      У SC-04 ця гілка не виконується.
-    end note
+    Service -> Books: findBookById(101)
+    activate Books
+    Books --> Service: Book(id=101)
+    deactivate Books
+
+    Service -> Loans: findActiveLoan(101)
+    activate Loans
+    Loans --> Service: null
+    deactivate Loans
+
+    Service --> UI: ReaderValidationPassed()
+    UI -> UI: showStatus("Перевірка читача пройдена")
+    UI --> Librarian: Можна продовжити оформлення
 end
 
 deactivate Service
-
-UI -> UI: showError("Читача не знайдено")
-UI --> Librarian: Видачу відхилено
-
 deactivate UI
 
-note over Books, Loans
-  Перевірка книги не виконується.
+note over Service, Loans
+  У сценарії SC-04:
+  Reader(id=9999) не знайдено.
+
+  Перевірка книги не виконується
+  на фактичному шляху SC-04.
+
   Новий Loan не створюється.
-  Наявні записи не змінюються.
+  Існуючі записи не змінюються.
 end note
 
 @enduml
