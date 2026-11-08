@@ -12,6 +12,12 @@ entity "ReaderRepository" as Readers
 entity "BookRepository" as Books
 entity "LoanRepository" as Loans
 
+note over Librarian, UI
+  Передумова:
+  бібліотекар авторизований
+  і має право видавати книги.
+end note
+
 Librarian -> UI: submitLoan(15, 101, "04.11.2026")
 activate UI
 
@@ -49,23 +55,34 @@ alt Читач зареєстрований
             deactivate Loans
 
             Service --> UI: LoanCreated(id=501)
-        else Дата неправильна
-            Service --> UI: ValidationError("Неправильна дата")
+            UI -> UI: showSuccess("Книгу успішно видано")
+            UI --> Librarian: Книгу успішно видано, Loan(id=501)
+
+        else Дата повернення неправильна
+            Service --> UI: ValidationError("Неправильна дата повернення")
+            UI -> UI: showError("Неправильна дата повернення")
+            UI --> Librarian: Видачу відхилено
         end
 
     else Книга вже видана
         Service --> UI: LoanError("Книга вже видана")
+        UI -> UI: showError("Книга вже видана")
+        UI --> Librarian: Видачу відхилено
     end
 
 else Читача не знайдено
     Service --> UI: LoanError("Читача не знайдено")
+    UI -> UI: showError("Читача не знайдено")
+    UI --> Librarian: Видачу відхилено
 end
 
 deactivate Service
-
-UI -> UI: showSuccessOrError()
-UI --> Librarian: Результат оформлення видачі
-
 deactivate UI
+
+note over Service, Loans
+  На успішному шляху створюється
+  один Loan із loan_date=21.10.2026,
+  due_date=04.11.2026 та return_date=null.
+end note
 
 @enduml
